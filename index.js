@@ -7,19 +7,19 @@ import bodyParser from "body-parser";
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Autoriser toutes les requêtes depuis Lovable
+// Autoriser toutes les requêtes depuis n'importe quelle origine (CORS)
 app.use(cors());
 app.use(bodyParser.json({ limit: "50mb" }));
 
-// Remplace par l'URL de ton Apps Script
-const SCRIPT_URL = "https://script.google.com/macros/s/TON_ID/exec";
+// ⚡ Remplace par l'URL complète de ton Google Apps Script
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxf0rezqgwbFYsy08fevdPSfdIuw1kgKolX-3LbtEz_oTWcaMn8fZxSi2muO_VW95r9-A/exec";
 
-// Route test
+// Route test pour vérifier que le proxy fonctionne
 app.get("/", (req, res) => {
   res.send("Proxy fonctionne !");
 });
 
-// Route pour envoyer un message ou un fichier
+// Route pour envoyer un message au Google Apps Script
 app.post("/api/sendMessage", async (req, res) => {
   try {
     const response = await fetch(SCRIPT_URL, {
@@ -31,7 +31,7 @@ app.post("/api/sendMessage", async (req, res) => {
     const data = await response.json();
     res.json(data);
   } catch (err) {
-    console.error(err);
+    console.error("Erreur proxy:", err);
     res.status(500).json({ success: false, error: err.toString() });
   }
 });
