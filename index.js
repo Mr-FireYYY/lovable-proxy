@@ -1,52 +1,52 @@
-import express from "express";
-import bodyParser from "body-parser";
-import fetch from "node-fetch";
+import { Resend } from "resend";
 
-const app = express();
-const PORT = process.env.PORT || 5000;
+export const config = {
+  runtime: "edge",
+};
 
-// Domaine front Lovable
-const ALLOWED_ORIGIN = "https://preview--1068e326-07d5-46d9-b54a-e7ac726a4e50.lovable.app";
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Middleware CORS manuel (obligatoire pour Vercel)
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-
+export default async function handler(req) {
   if (req.method === "OPTIONS") {
-    return res.status(200).end();
+    return new Response(null, {
+      status: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
   }
 
-  next();
-});
+  if (req.method !== "POST") {
+    return new Response("Méthode non autorisée", { status: 405 });
+  }
 
-app.use(bodyParser.json({ limit: "50mb" }));
-
-const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbxf0rezqgwbFYsy08fevdPSfdIuw1kgKolX-3LbtEz_oTWcaMn8fZxSi2muO_VW95r9-A/exec";
-
-// Test
-app.get("/", (req, res) => {
-  res.send("Proxy fonctionne Vercel 🚀");
-});
-
-// Route proxy
-app.post("/api/sendMessage", async (req, res) => {
   try {
-    const response = await fetch(SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(req.body),
+    const body = await req.json();
+    const { name, text } = body;
+
+    const data = await resend.emails.send({
+      from: "Site Web <onboarding@resend.dev>",
+      to: "mariage.manuela.lionel@gmail.com",
+      subject: "Nouveau message depuis le site",
+      html: '<p><strong>Nom :</strong> ${name}</p><p><strong>Message :</strong> ${text}</p>',
     });
 
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    console.error("Erreur Proxy:", err);
-    res.status(500).json({ success: false, error: err.toString() });
-  }
-});
+    return new Response(JSON.stringify({ success: true, data }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
 
-app.listen(PORT, () => console.log("Proxy running on port " + PORT));
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  }
+}
